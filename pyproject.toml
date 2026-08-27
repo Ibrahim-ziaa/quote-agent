@@ -1,0 +1,19 @@
+[project]
+name = "quote-agent"
+version = "0.1.0"
+description = "Lead-to-quote agent: chatbot lead in, priced quote out, human approval before anything reaches the customer."
+requires-python = ">=3.11"
+dependencies = ["langgraph>=1.0", "anthropic>=0.40"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["quote_agent"]

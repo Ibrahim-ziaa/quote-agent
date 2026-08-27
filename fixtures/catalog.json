@@ -1,0 +1,22 @@
+{
+  "products": [
+    {"sku": "PMP-100", "name": "Centrifugal pump 1HP", "cost": 310.0, "list_price": 495.0, "stock": 14},
+    {"sku": "PMP-250", "name": "Centrifugal pump 2.5HP", "cost": 640.0, "list_price": 980.0, "stock": 3},
+    {"sku": "VLV-050", "name": "Ball valve 1/2 inch brass", "cost": 6.2, "list_price": 11.5, "stock": 900},
+    {"sku": "VLV-100", "name": "Ball valve 1 inch brass", "cost": 11.8, "list_price": 21.0, "stock": 0},
+    {"sku": "HSE-020", "name": "Reinforced hose 20m", "cost": 48.0, "list_price": 79.0, "stock": 40},
+    {"sku": "FLT-SED", "name": "Sediment filter cartridge", "cost": 4.1, "list_price": 9.9, "stock": 2200}
+  ],
+  "aliases": {
+    "1hp pump": "PMP-100",
+    "one horsepower pump": "PMP-100",
+    "2.5hp pump": "PMP-250",
+    "half inch valve": "VLV-050",
+    "1/2 valve": "VLV-050",
+    "one inch valve": "VLV-100",
+    "1 inch valve": "VLV-100",
+    "hose": "HSE-020",
+    "sediment filter": "FLT-SED",
+    "filter cartridge": "FLT-SED"
+  }
+}
