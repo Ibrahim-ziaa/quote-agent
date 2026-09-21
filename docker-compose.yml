@@ -1,0 +1,11 @@
+services:
+  quote-desk:
+    build: .
+    ports:
+      - "8101:8101"
+    environment:
+      # Demo mode needs nothing. For a live model on new requests, set both of these:
+      # QUOTE_DESK_LIVE: "1"
+      # ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      TZ: ${TZ:-UTC}
+    restart: unless-stopped

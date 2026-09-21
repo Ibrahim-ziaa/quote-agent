@@ -39,7 +39,8 @@ def main(argv: list[str]) -> int:
     state = run_until_gate(graph, lead, thread_id="demo-1")
 
     print("=== Priced quote (deterministic) ===")
-    print(json.dumps(state["quote"], indent=2))
+    compact = {**state["quote"], "lines": [{k: v for k, v in l.items() if k not in ("trail", "flags")} for l in state["quote"]["lines"]]}
+    print(json.dumps(compact, indent=2))   # the web app shows the full rule trail per line
     print("\n=== Why a manager must look at this ===")
     for r in state["needs_manager"] or ["(nothing, could auto-send)"]:
         print(" -", r)

@@ -1,0 +1,61 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* cool tinted neutrals */
+  --color-ink-25: #fafbfc;
+  --color-ink-50: #f5f6f8;
+  --color-ink-100: #eceef2;
+  --color-ink-200: #e0e3e9;
+  --color-ink-300: #c9ced7;
+  --color-ink-400: #98a0ad;
+  --color-ink-500: #667080;
+  --color-ink-600: #4b5361;
+  --color-ink-700: #373e4a;
+  --color-ink-800: #232831;
+  --color-ink-900: #14181f;
+
+  /* the one accent */
+  --color-accent-50: #eef3ff;
+  --color-accent-100: #dce6ff;
+  --color-accent-200: #bccfff;
+  --color-accent-600: #2450d4;
+  --color-accent-700: #1c40b0;
+
+  --color-warn-50: #fff7e4;
+  --color-warn-100: #fdecc2;
+  --color-warn-200: #f3d58c;
+  --color-warn-700: #8a5700;
+  --color-warn-800: #6d4400;
+
+  --color-bad-50: #fdefed;
+  --color-bad-100: #fadbd7;
+  --color-bad-200: #f2b9b2;
+  --color-bad-600: #c4372a;
+  --color-bad-700: #a02c21;
+
+  --color-good-50: #e9f6ee;
+  --color-good-100: #d2ecdc;
+  --color-good-200: #a9d9bb;
+  --color-good-600: #1f7a45;
+  --color-good-700: #186237;
+}
+
+html, body, #root { height: 100%; }
+body {
+  @apply bg-ink-50 text-ink-900 font-sans antialiased;
+  font-size: 14px;
+  line-height: 1.5;
+  font-feature-settings: "cv11", "ss01", "calt";
+}
+.num { font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--color-accent-600); outline-offset: 2px; border-radius: 4px; }
+button, a, input, select, textarea { outline: none; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+
+@keyframes pulse-soft { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
+.skeleton { background: var(--color-ink-100); border-radius: 6px; animation: pulse-soft 1.4s ease-in-out infinite; }
