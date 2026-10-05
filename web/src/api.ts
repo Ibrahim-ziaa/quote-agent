@@ -76,7 +76,10 @@ export interface QuoteDetail extends QuoteSummary {
   rules: Rules;
   history: HistoryEvent[];
   sent_at: number | null;
+  delivery: Delivery | null;
 }
+
+export interface Delivery { status: "delivered" | "failed" | "not_on_allowlist" | "recorded"; detail: string; to: string | null; ts: number; pdf: string }
 
 export interface Preview { quote: PricedQuote; needs_manager: string[] }
 
@@ -134,7 +137,7 @@ export interface Product {
   list_margin: number;
 }
 
-export interface Meta { product: string; mode: "demo" | "live"; user: string; role: string; distributor: string }
+export interface Meta { product: string; mode: "demo" | "live"; user: string; role: string; distributor: string; email?: { enabled: boolean; sender: string | null; allowlist: string[] } }
 
 export class ApiError extends Error {
   status: number;

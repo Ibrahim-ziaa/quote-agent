@@ -53,6 +53,19 @@ python -m quote_agent                      # offline, scripted model
 ANTHROPIC_API_KEY=... python -m quote_agent --live "I need 3 one horsepower pumps and 200 half inch valves, can you do 15% off?"
 ```
 
+## Quote PDF and real email
+
+Every priced quote has a customer facing PDF (`Preview PDF` while it waits, `Quote PDF` once sent), drawn from the same numbers `pricing.py` produced. Cost, margin and the rule trail never appear on it.
+
+Approving can send the email for real, with the PDF attached. It is off by default and limited to an allowlist, so the fictional demo customers never get mail:
+
+```bash
+security add-generic-password -a you@gmail.com -s quote-desk-gmail -w     # paste a Gmail app password when prompted
+QUOTE_DESK_SMTP_USER=you@gmail.com QUOTE_DESK_SEND_TO=you@gmail.com make demo
+```
+
+Then create a request with your own address and approve it. The quote shows whether the email was delivered, recorded only, or failed; a mail failure never undoes the approval.
+
 ## Why it is built this way
 
 Most "AI quoting" demos let the model invent prices. This one does not. The split is deliberate:

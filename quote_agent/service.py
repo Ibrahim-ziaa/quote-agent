@@ -17,6 +17,7 @@ from pathlib import Path
 from . import graph as graph_mod
 from .erp import MockERP
 from .llm import DemoLLM
+from .pdf import render_quote_pdf
 from .pricing import DEFAULT_RULES, PricingRules
 
 # Where fixtures/, web/dist and data/ live. The repo root by default; the Docker image sets it to /app.
@@ -87,13 +88,14 @@ class _SwitchableLLM:
 class QuoteDesk:
     def __init__(self, catalog_path: Path | None = None, decisions_path: Path | None = None,
                  seed_path: Path | None = None, user: str = "Marta Kowalski", live_llm=None,
-                 demo_clock: bool = False) -> None:
+                 demo_clock: bool = False, email_sender=None) -> None:
         self.catalog_path = Path(catalog_path or ROOT / "fixtures" / "catalog.json")
         self.decisions_path = Path(decisions_path or ROOT / "data" / "decisions.demo.jsonl")
         self.seed_path = seed_path
         self.user = user
         self.live_llm = live_llm
         self.demo_clock = demo_clock
+        self.email_sender = email_sender   # mailer.SmtpMailer or None: None records the email, sends nothing
         self._lock = threading.RLock()
         self.reset()
 
@@ -105,6 +107,7 @@ class QuoteDesk:
             self.rules_changed: dict | None = None
             self.clock = Clock(demo_clock_offset() if self.demo_clock else 0.0)
             self.outbox: list[dict] = []
+            self.deliveries: dict[str, dict] = {}
             self._ids: list[str] = []
             self._next = 1001
             self.decisions_path.parent.mkdir(parents=True, exist_ok=True)
@@ -124,10 +127,43 @@ class QuoteDesk:
         return "live" if self.live_llm is not None else "demo"
 
     def _mail(self, state: dict) -> None:
-        """Stand-in for the email/CRM call. It records exactly what would have gone out."""
+        """Called by the graph's send node, after approval. Records exactly what goes out, and emails it
+        with the quote PDF attached when a real sender is configured and the address is on its allowlist."""
         req = state.get("request", {})
-        self.outbox.append({"request_id": req.get("id"), "to": req.get("email"), "body": state.get("draft_email"),
-                            "total": state.get("quote", {}).get("total"), "ts": self.clock()})
+        qid, to = req.get("id"), req.get("email")
+        subject = f"Quote {qid} from Calder Bay Industrial Supply"
+        entry = {"request_id": qid, "to": to, "subject": subject, "body": state.get("draft_email"),
+                 "total": state.get("quote", {}).get("total"), "ts": self.clock(), "pdf": f"Quote-{qid}.pdf"}
+        sender = self.email_sender
+        if sender is None:
+            entry["delivery"] = {"status": "recorded", "detail": "Email sending is off, the email and PDF are recorded here"}
+        elif not sender.allowed(to):
+            entry["delivery"] = {"status": "not_on_allowlist", "detail": f"{to or 'No address'} is not on the send allowlist, nothing left the app"}
+        else:
+            try:
+                pdf = render_quote_pdf(self._pdf_fields(qid, state, "sent"), self.clock())
+                sender.send(to, subject, state.get("draft_email", ""), pdf, entry["pdf"])
+                entry["delivery"] = {"status": "delivered", "detail": f"Emailed to {to} with {entry['pdf']} attached"}
+            except Exception as exc:   # a mail failure must not lose the approval; it is shown on the quote
+                entry["delivery"] = {"status": "failed", "detail": f"Email to {to} failed: {exc}"}
+        self.outbox.append(entry)
+        self.deliveries[qid] = entry["delivery"] | {"to": to, "ts": entry["ts"], "pdf": entry["pdf"]}
+
+    @staticmethod
+    def _pdf_fields(qid: str, state: dict, status: str) -> dict:
+        req = state.get("request", {})
+        return {"id": qid, "customer": req.get("customer") or state.get("customer_name"), "company": req.get("company"),
+                "email": req.get("email"), "received_at": req.get("received_at"), "status": status,
+                "decided_by": state.get("decided_by"), "decided_at": state.get("decided_at"), "quote": state.get("quote", {})}
+
+    def pdf(self, qid: str) -> bytes:
+        """The customer quote PDF as it stands now: a draft while waiting, the issued quote once sent."""
+        with self._lock:
+            state = self._state(qid)
+            status = self._status(qid, state)
+            if not state.get("quote", {}).get("lines"):
+                raise Conflict(f"{qid} has nothing priced, there is no quote to print")
+            return render_quote_pdf(self._pdf_fields(qid, state, status), self.clock())
 
     def _seed(self, seed: dict) -> None:
         now = self.clock()
@@ -208,6 +244,7 @@ class QuoteDesk:
             "needs_manager": s.get("needs_manager", []), "draft_email": s.get("draft_email", ""),
             "manager_note": s.get("manager_note", ""), "rules": s.get("rules", {}),
             "history": s.get("history", []), "sent_at": s.get("sent_at"),
+            "delivery": self.deliveries.get(qid),
         }
         return out
 
@@ -395,10 +432,12 @@ class QuoteDesk:
 
 
 def from_env() -> QuoteDesk:
+    from . import mailer
     live = None
     if os.environ.get("QUOTE_DESK_LIVE") == "1":
         from .llm import AnthropicLLM   # needs ANTHROPIC_API_KEY; only new requests use it
         live = AnthropicLLM()
     return QuoteDesk(seed_path=ROOT / "fixtures" / "demo_requests.json",
                      decisions_path=Path(os.environ.get("QUOTE_DESK_LOG", ROOT / "data" / "decisions.demo.jsonl")),
-                     live_llm=live, demo_clock=os.environ.get("QUOTE_DESK_REAL_CLOCK") != "1")
+                     live_llm=live, demo_clock=os.environ.get("QUOTE_DESK_REAL_CLOCK") != "1",
+                     email_sender=mailer.from_env())

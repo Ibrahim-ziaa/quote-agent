@@ -11,7 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -81,7 +81,10 @@ def create_app(desk: QuoteDesk | None = None, static_dir: Path | None = None) ->
     @app.get("/api/meta")
     def meta():
         return {"product": "Quote Desk", "mode": desk.mode, "user": desk.user, "role": "Sales manager",
-                "distributor": "Calder Bay Industrial Supply", "currency": "USD", "now": desk.clock()}
+                "distributor": "Calder Bay Industrial Supply", "currency": "USD", "now": desk.clock(),
+                "email": {"enabled": desk.email_sender is not None,
+                          "sender": getattr(desk.email_sender, "user", None),
+                          "allowlist": sorted(getattr(desk.email_sender, "allowlist", []))}}
 
     @app.get("/api/quotes")
     def list_quotes():
@@ -94,6 +97,11 @@ def create_app(desk: QuoteDesk | None = None, static_dir: Path | None = None) ->
     @app.get("/api/quotes/{qid}")
     def get_quote(qid: str):
         return desk.detail(qid)
+
+    @app.get("/api/quotes/{qid}/pdf")
+    def quote_pdf(qid: str):
+        return Response(desk.pdf(qid), media_type="application/pdf",
+                        headers={"Content-Disposition": f'inline; filename="Quote-{qid}.pdf"'})
 
     @app.post("/api/quotes/{qid}/preview")
     def preview(qid: str, body: EditBody):
@@ -140,6 +148,14 @@ def create_app(desk: QuoteDesk | None = None, static_dir: Path | None = None) ->
     @app.get("/api/price-check")
     def price_check(sku: str, qty: int = 1, asked: float = 0.0):
         return desk.price_check(sku, qty, asked)
+
+    @app.get("/api/storefront/catalog")
+    def storefront_catalog():
+        """What the public request page may show: no cost, no margin, no exact stock counts."""
+        def availability(stock: int) -> str:
+            return "out_of_stock" if stock <= 0 else "low_stock" if stock < 10 else "in_stock"
+        return {"products": [{"sku": p["sku"], "name": p["name"], "category": p["category"], "list_price": p["list_price"],
+                              "availability": availability(p["stock"])} for p in desk.erp.list_products()]}
 
     @app.get("/api/catalog")
     def catalog():

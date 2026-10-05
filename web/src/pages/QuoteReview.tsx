@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { AlertTriangle, ArrowLeft, Check, CheckCircle2, CircleSlash, Info, Paperclip, Pencil, Plus, Send, ShieldAlert, Trash2, X, Zap } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, CheckCircle2, CircleSlash, FileText, Info, Mail, Paperclip, Pencil, Plus, Send, ShieldAlert, Trash2, X, Zap } from "lucide-react";
 import { api, useApi, type ApiError, type HistoryEvent, type Preview, type PricedQuote, type Product, type QuoteDetail, type QuoteLine, type Rules, type Unpriced } from "../api";
 import { useApp } from "../App";
 import { age, clock, dateTime, money, pct } from "../format";
@@ -115,8 +115,22 @@ export default function QuoteReview() {
             <span className="text-ink-400"> ({dateTime(data.received_at)})</span>
           </p>
         </div>
+        {!waiting && data.quote.lines.length > 0 && (
+          <div className="ml-auto flex items-center gap-2 pt-4">
+            <a href={`/api/quotes/${data.id}/pdf`} target="_blank" rel="noreferrer"
+              className="inline-flex h-9 items-center gap-1.5 rounded-md border border-ink-200 bg-white px-3 text-sm font-medium text-ink-800 shadow-sm hover:bg-ink-50">
+              <FileText size={14} aria-hidden /> Quote PDF
+            </a>
+          </div>
+        )}
         {waiting && (
           <div className="ml-auto flex items-center gap-2 pt-4">
+            {canSend && (
+              <a href={`/api/quotes/${data.id}/pdf`} target="_blank" rel="noreferrer" title="Preview the PDF the customer will receive"
+                className="inline-flex h-9 items-center gap-1.5 rounded-md border border-ink-200 bg-white px-3 text-sm font-medium text-ink-800 shadow-sm hover:bg-ink-50">
+                <FileText size={14} aria-hidden /> Preview PDF
+              </a>
+            )}
             <Button variant="danger" onClick={() => setParam("reject", !rejecting)} disabled={!!busy || editing}><X size={15} aria-hidden /> Reject</Button>
             <Button onClick={() => setParam("edit", !editing)} disabled={!!busy || editing}><Pencil size={14} aria-hidden /> Edit quote</Button>
             <Button variant="primary" onClick={approve} busy={busy === "approve"} disabled={!!busy || editing || !canSend}
@@ -389,6 +403,18 @@ function explainReasons(q: PricedQuote, rules: Rules): string[] {
   return out;
 }
 
+function DeliveryLine({ q }: { q: QuoteDetail }) {
+  const d = q.delivery;
+  if (!d) return null;
+  const tone = d.status === "delivered" ? "text-good-700" : d.status === "failed" ? "text-bad-700" : "text-ink-500";
+  return (
+    <p className={cx("mt-1 flex items-center gap-1.5 pl-6 text-[13px]", tone)}>
+      <Mail size={13} aria-hidden /> {d.detail}
+      {d.status === "delivered" && <a href={`/api/quotes/${q.id}/pdf`} target="_blank" rel="noreferrer" className="underline">View {d.pdf}</a>}
+    </p>
+  );
+}
+
 function DecisionBanner({ q }: { q: QuoteDetail }) {
   if (q.status === "needs_approval") return null;
   const when = q.decided_at ? dateTime(q.decided_at) : "";
@@ -402,12 +428,14 @@ function DecisionBanner({ q }: { q: QuoteDetail }) {
     <div className="rounded-lg border border-ink-200 bg-white px-4 py-3 text-sm text-ink-700">
       <div className="flex items-center gap-2 font-semibold text-ink-900"><Zap size={16} aria-hidden /> Auto approved and sent, {when}</div>
       <p className="mt-1 pl-6">No pricing rule was triggered: every discount is within the limit, every line is in stock and every item was priced. Sent to {q.email ?? "the customer"}.</p>
+      <DeliveryLine q={q} />
     </div>
   );
   return (
     <div className="rounded-lg border border-good-200 bg-good-50 px-4 py-3 text-sm text-good-700">
       <div className="flex items-center gap-2 font-semibold"><CheckCircle2 size={16} aria-hidden /> Approved by {q.decided_by}, {when}. Sent to {q.email ?? "the customer"}.</div>
       {q.manager_note && <p className="mt-1 pl-6">Note: {q.manager_note}</p>}
+      <DeliveryLine q={q} />
     </div>
   );
 }
